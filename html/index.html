@@ -1,0 +1,328 @@
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+
+</head>
+<style>
+    *{
+        padding: 0;
+        margin: 0;
+        font-family: 'Poppins', sans-serif; 
+    }
+    main img{
+        width: 12vw;
+        padding: 5px;
+    }
+
+    body{
+        display: flex;
+        height: 100%;
+    }
+
+    main{
+        width: 80vw;
+    }
+
+    nav{
+        width: 20vw;
+        background-color: rgb(212, 213, 213);
+    }
+
+    .card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: stretch;
+      margin-bottom: 2rem;
+      width: 17vw;
+      display: flex;
+      flex-direction: column;
+      border-radius: 0.25rem;
+      padding: 1.5rem;
+      border: 3px solid #0065e9;
+      border-radius: 10px;
+    }
+
+    .header {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .title {
+      font-size: 1.5rem;
+      line-height: 2rem;
+      font-weight: 700;
+      color: #fff
+    }
+
+    .price {
+      font-size: 3.75rem;
+      line-height: 1;
+      font-weight: 700;
+      color: #fff
+    }
+
+    .desc {
+      margin-top: 0.75rem;
+      margin-bottom: 0.75rem;
+      line-height: 1.625;
+      color: rgba(156, 163, 175, 1);
+    }
+
+    .lists {
+      margin-bottom: 1.5rem;
+      flex: 1 1 0%;
+    }
+
+    .lists .list {
+      margin-bottom: 0.5rem;
+      display: flex;
+      margin-left: 0.5rem
+    }
+
+    .lists .list svg {
+      height: 1.5rem;
+      width: 1.5rem;
+      flex-shrink: 0;
+      margin-right: 0.5rem;
+      color: #0065e9;
+    }
+
+    .action {
+      border: none;
+      outline: none;
+      display: inline-block;
+      border-radius: 0.25rem;
+      background-color: #0065e9;
+      padding-left: 1.25rem;
+      padding-right: 1.25rem;
+      padding-top: 0.75rem;
+      padding-bottom: 0.75rem;
+      text-align: center;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: rgb(0, 0, 0);
+    }
+
+    .action:hover {
+      background-color: #0053c6;
+      color: #fff;
+    }
+
+
+    .container-card{
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        gap: 30px;
+        justify-content: center;
+    }
+
+    nav ul{
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    #card-grid{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 30px;
+    }
+    
+
+    .pop-up{
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .pop-up form{
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+</style>
+<body>
+    <main>
+       <img src="asset\img\logobanner.png" alt="">
+       <div id="card-grid">
+            
+        </div>
+    </main>
+    <nav>
+        <ul>
+            <li><button class="add">Ajouter une règle</button></li>
+            <li><button>Supprimer une règle</button></li>
+        </ul>
+    </nav>
+    <div class="pop-up">
+        <h2>Ajouter une règle</h2>
+        <form id="add-rule-form">
+            <label for="src_ip">IP Source:</label>
+            <input type="text" id="src_ip" name="src_ip" required>
+            <label for="dst_ip">IP Distante:</label>
+            <input type="text" id="dst_ip" name="dst_ip" required>
+            <label for="proto">Protocole:</label>
+            <input type="text" id="proto" name="proto" required>
+            <label for="tcp_flags">Flag TCP:</label>
+            <input type="text" id="tcp_flags" name="tcp_flags" required>
+            <label for="src_port">Port Source:</label>
+            <input type="text" id="src_port" name="src_port" required>
+            <label for="dst_port">Port Distant:</label>
+            <input type="text" id="dst_port" name="dst_port" required>
+            <button type="submit">Ajouter</button>
+        </form>
+    </div>
+    <script>
+        fetch('/rules')
+          .then(res => res.json())
+          .then(data => {
+            const grid = document.getElementById("card-grid");
+            let containerCard = null;
+        
+            data.forEach((rule, index) => {
+              // Crée une nouvelle ligne (container-card) chaque 3 cartes
+              if (index % 3 === 0) {
+                containerCard = document.createElement("div");
+                containerCard.className = "container-card";
+                grid.appendChild(containerCard);
+              }
+          
+              // Création de la carte
+              const card = document.createElement("div");
+              card.className = "card";
+          
+              card.innerHTML = `
+                <ul class="lists">
+                  <li class="list">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    <span>IP Source : ${rule.src_ip}</span>
+                  </li>
+                  <li class="list">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    <span>IP Distante : ${rule.dst_ip}</span>
+                  </li>
+                  <li class="list">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    <span>Protocole : ${rule.proto}</span>
+                  </li>
+                  <li class="list">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    <span>Flag TCP : ${rule.tcp_flags}</span>
+                  </li>
+                  <li class="list">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    <span>Port source : ${rule.src_port}</span>
+                  </li>
+                  <li class="list">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    <span>Port Distant : ${rule.dst_port}</span>
+                  </li>
+                </ul>
+                <button type="button" class="action" data-rule='${JSON.stringify(rule)}'>Désactiver</button>
+              `;
+
+		const deleteBtn = card.querySelector("button.action");
+		deleteBtn.addEventListener("click", function () {
+  			const rule = JSON.parse(this.getAttribute("data-rule"));
+  			deleteRule(rule);
+		});
+            
+              containerCard.appendChild(card);
+            });
+          })
+          .catch(err => console.error(err));
+   
+          const addRuleButton = document.querySelector('.add');
+        const popUp = document.querySelector('.pop-up');
+        addRuleButton.addEventListener('click', () => {
+            popUp.style.display = 'flex';
+        });        
+
+         document.getElementById("add-rule-form").addEventListener("submit", function(e) {
+  e.preventDefault(); // Empêche le rechargement
+
+  const rule = {
+    src_ip: document.getElementById("src_ip").value,
+    dst_ip: document.getElementById("dst_ip").value,
+    proto: parseInt(document.getElementById("proto").value),
+    tcp_flags: parseInt(document.getElementById("tcp_flags").value),
+    src_port: parseInt(document.getElementById("src_port").value),
+    dst_port: parseInt(document.getElementById("dst_port").value),
+  };
+
+  fetch("/rules", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(rule)
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("Erreur API");
+    return res.text();
+  })
+  .then(msg => {
+    alert(msg);
+    location.reload(); // Recharge la page pour voir la nouvelle règle
+  })
+  .catch(err => {
+    console.error(err);
+    alert("Erreur lors de l'ajout de la règle");
+  });
+});
+
+document.addEventListener("keydown", function(event) {
+  if (event.key === "Escape") {
+    const popup = document.querySelector(".pop-up");
+    if (popup && getComputedStyle(popup).display === "flex") {
+      popup.style.display = "none";
+    }
+  }
+});
+
+function deleteRule(rule) {
+  console.log("cliqué");
+  if (!confirm("Supprimer cette règle ?")) return;
+
+  fetch("/rules", {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(rule)
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("Échec suppression");
+    return res.text();
+  })
+  .then(msg => {
+    alert(msg);
+    location.reload(); // recharge les cartes
+  })
+  .catch(err => {
+    console.error(err);
+    alert("Erreur suppression règle");
+  });
+}
+</script>
+
+</body>
+
+</html>
+
+

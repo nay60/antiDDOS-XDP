@@ -13,22 +13,21 @@ import (
 )
 
 type RuleKey struct {
-    SrcIP    uint32  // 0–3
-    DstIP    uint32  // 4–7
-    Proto    uint8   // 8
-    TCPFlags uint8   // 9
-    SrcPort  uint16  // 10–11
-    DstPort  uint16  // 12–13
-    Pad      uint16  // 14–15
-}
-
-
-func ipToUint32(ip net.IP) uint32 {
-    return binary.LittleEndian.Uint32(ip.To4())
+    SrcIP    uint32
+    DstIP    uint32
+    Proto    uint8
+    TCPFlags uint8
+    SrcPort  uint16
+    DstPort  uint16
+    Pad      uint16
 }
 
 func htons(port uint16) uint16 {
-    return (port<<8)&0xff00 | port>>8
+    return (port << 8) | (port >> 8)
+}
+
+func ipToUint32(ip net.IP) uint32 {
+    return binary.LittleEndian.Uint32(ip.To4())
 }
 
 func main() {
@@ -70,22 +69,26 @@ func main() {
 
     rules := coll.Maps["rules"]
 
-    key := RuleKey{
-        SrcIP:    0x08080808,     // 8.8.8.8 (little endian)
-        DstIP:    0x8058A8C0,     // 192.168.124.128 = 0xc0a87c80 en hex = 0x807ca8c0 en little endian
-        Proto:    6,              // ICMP
-	TCPFlags: 0x02, 
-        SrcPort:  htons(12345),
-        DstPort:  htons(80),
-        Pad:      0,     // padding
-    }
-    var action uint8 = 1
-
-    err = rules.Put(&key, &action)
-    if err != nil {
-        log.Fatalf("Failed to insert rule: %v", err)
+    err = rules.Pin("/sys/fs/bpf/rules")
+    if err != nil && !os.IsExist(err) {
+        log.Fatalf("Échec du pin de la map: %v", err)
     }
 
-    fmt.Println("Rule added. Program is running. Ctrl+C to exit.")
+    action := uint8(1)
+
+    // ➕ Liste des règles à ajouter
+    ruleSet := []RuleKey{
+
+    }
+
+    for _, rule := range ruleSet {
+        if err := rules.Put(&rule, &action); err != nil {
+            log.Printf("❌ Erreur insertion règle %+v: %v", rule, err)
+        } else {
+            fmt.Printf("✅ Règle ajoutée : %+v\n", rule)
+        }
+    }
+
+    fmt.Println("Toutes les règles ont été ajoutées. Le programme tourne. Ctrl+C pour quitter.")
     select {}
 }
