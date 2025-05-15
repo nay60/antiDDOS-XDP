@@ -1,16 +1,13 @@
-#include <linux/bpf.h>
-#include <linux/if_ether.h>
-#include <linux/ip.h>
-#include <linux/tcp.h>
-#include <linux/udp.h>
+#include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
+
 
 
 #define IPPROTO_ICMP 1
 #define IPPROTO_TCP 6
 #define IPPROTO_UDP 17
-
+#define ETH_P_IP 0x0800
 
 struct rule_key {
     __u32 src_ip;
@@ -29,6 +26,7 @@ struct {
     __type(value, __u8);
 } rules SEC(".maps");
 
+
 SEC("xdp")
 int xdp_ddos_filter(struct xdp_md *ctx) {
     void *data = (void *)(long)ctx->data;
@@ -39,7 +37,7 @@ int xdp_ddos_filter(struct xdp_md *ctx) {
     if ((void *)(eth + 1) > data_end)
         return XDP_PASS;
 
-    if (eth->h_proto != __constant_htons(ETH_P_IP))
+    if (eth->h_proto != bpf_htons(ETH_P_IP))
         return XDP_PASS;
 
     struct iphdr *iph = data + sizeof(*eth);

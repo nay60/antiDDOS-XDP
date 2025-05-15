@@ -1,10 +1,15 @@
-BPF_CLANG=clang
-BPF_CFLAGS=-O2 -g -Wall -target bpf -D__TARGET_ARCH_x86 -I.
+BPF_CLANG ?= clang
+BPF_CFLAGS = -O2 -g -Wall -target bpf -D__TARGET_ARCH_x86
 
-all: xdp_kern.o
+BPF_SRC = xdp_kern.c
+BPF_OBJ = xdp_kern.o
 
-xdp_kern.o: xdp_kern.c
-	$(BPF_CLANG) $(BPF_CFLAGS) -c $< -o $@
+all: $(BPF_OBJ)
+
+$(BPF_OBJ): $(BPF_SRC) vmlinux.h
+	$(BPF_CLANG) $(BPF_CFLAGS) -c $(BPF_SRC) -o $(BPF_OBJ)
 
 clean:
-	rm -f *.o
+	rm -f $(BPF_OBJ)
+
+
