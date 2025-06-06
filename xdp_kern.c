@@ -70,6 +70,25 @@ struct {
     __type(value, struct icmp_flood_value);
 } icmp_flood SEC(".maps");
 
+// Structure pour le SYN-ACK Flood
+struct synack_flood_key {
+    __u32 src_ip;
+};
+
+struct synack_flood_value {
+    __u64 timestamp;
+    __u32 count;
+};
+
+// Map pour stocker les SYN-ACK flood counters
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 10240);
+    __type(key, struct synack_flood_key);
+    __type(value, struct synack_flood_value);
+} synack_flood SEC(".maps");
+
+
 SEC("xdp")
 int xdp_ddos_filter(struct xdp_md *ctx) {
     void *data = (void *)(long)ctx->data;
@@ -92,38 +111,63 @@ int xdp_ddos_filter(struct xdp_md *ctx) {
     key.proto = iph->protocol;
 
     if (iph->protocol == IPPROTO_TCP) {
-        struct tcphdr *tcp = (void*)iph + iph->ihl * 4;
-        if ((void*)(tcp + 1) > data_end)
-            return XDP_PASS;
-        key.src_port = tcp->source;
-        key.dst_port = tcp->dest;
-        key.tcp_flags = *((__u8 *)tcp + 13);
-        bpf_printk("KEY BUILT: %x -> %x proto=%d sport=%d dport=%d flags=0x%x\n",
-            key.src_ip, key.dst_ip, key.proto,
-            bpf_ntohs(key.src_port), bpf_ntohs(key.dst_port), key.tcp_flags);
-	if (key.tcp_flags & 0x02) {  // flag SYN
-            struct syn_flood_key syn_key = {.src_ip = iph->saddr};
-            struct syn_flood_value *syn_val;
-            __u64 now = bpf_ktime_get_ns();
-            __u64 window = 1000000000; // 1 seconde
+    struct tcphdr *tcp = (void*)iph + iph->ihl * 4;
+    if ((void*)(tcp + 1) > data_end)
+        return XDP_PASS;
+    key.src_port = tcp->source;
+    key.dst_port = tcp->dest;
+    key.tcp_flags = *((__u8 *)tcp + 13);
+    bpf_printk("KEY BUILT: %x -> %x proto=%d sport=%d dport=%d flags=0x%x\n",
+        key.src_ip, key.dst_ip, key.proto,
+        bpf_ntohs(key.src_port), bpf_ntohs(key.dst_port), key.tcp_flags);
 
-            syn_val = bpf_map_lookup_elem(&syn_flood, &syn_key);
-            if (!syn_val) {
-                struct syn_flood_value new_val = {.timestamp = now, .count = 1};
-                bpf_map_update_elem(&syn_flood, &syn_key, &new_val, BPF_ANY);
-            } else {
-                if (now - syn_val->timestamp <= window) {
-                    syn_val->count++;
-                    if (syn_val->count > 500) {
-                        bpf_printk("DROP SYN FLOOD src_ip=%x count=%d\n", iph->saddr, syn_val->count);
-                        return XDP_DROP;
-                    }
-                } else {
-                    syn_val->timestamp = now;
-                    syn_val->count = 1;
+    __u64 now = bpf_ktime_get_ns();
+    __u64 window = 1000000000; // 1 seconde
+
+    // D'abord SYN-ACK Flood (SYN + ACK == 0x12)
+    if (key.tcp_flags == 0x12) {  
+        struct synack_flood_key synack_key = {.src_ip = iph->saddr};
+        struct synack_flood_value *synack_val;
+
+        synack_val = bpf_map_lookup_elem(&synack_flood, &synack_key);
+        if (!synack_val) {
+            struct synack_flood_value new_val = {.timestamp = now, .count = 1};
+            bpf_map_update_elem(&synack_flood, &synack_key, &new_val, BPF_ANY);
+        } else {
+            if (now - synack_val->timestamp <= window) {
+                synack_val->count++;
+                if (synack_val->count > 200) {
+                    bpf_printk("DROP SYN-ACK FLOOD src_ip=%x count=%d\n", iph->saddr, synack_val->count);
+                    return XDP_DROP;
                 }
+            } else {
+                synack_val->timestamp = now;
+                synack_val->count = 1;
             }
         }
+    }
+    // Ensuite SYN Flood
+    else if (key.tcp_flags & 0x02) {
+        struct syn_flood_key syn_key = {.src_ip = iph->saddr}; 
+        struct syn_flood_value *syn_val;
+
+        syn_val = bpf_map_lookup_elem(&syn_flood, &syn_key);
+        if (!syn_val) {
+            struct syn_flood_value new_val = {.timestamp = now, .count = 1};
+            bpf_map_update_elem(&syn_flood, &syn_key, &new_val, BPF_ANY);
+        } else {
+            if (now - syn_val->timestamp <= window) {
+                syn_val->count++;
+                if (syn_val->count > 500) {
+                    bpf_printk("DROP SYN FLOOD src_ip=%x count=%d\n", iph->saddr, syn_val->count);
+                    return XDP_DROP;
+                }
+            } else {
+                syn_val->timestamp = now;
+                syn_val->count = 1;
+            }
+        }
+    }
     } else if (iph->protocol == IPPROTO_UDP) {
         struct udphdr *udp = (void*)iph + iph->ihl * 4;
         if ((void*)(udp + 1) > data_end)
